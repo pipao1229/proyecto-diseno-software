@@ -59,6 +59,11 @@
             background-color: #495057;
             color: #f8f9fa;
         }
+        /* Estilo para los links deshabilitados */
+        .nav-tabs-container .nav-link.disabled {
+            color: #6c757d;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -77,9 +82,14 @@
             <a class="nav-link {% if 'data' in request.path %}active{% endif %}" href="{% url 'consultas:data_explorer' %}">
                 <i class="fas fa-table"></i> Datos
             </a>
-            <a class="nav-link disabled" href="#">
+
+            <!-- === CAMBIO AQUÍ === -->
+            <!-- Quitamos 'disabled' y agregamos la lógica de 'active' y el 'href' -->
+            <a class="nav-link {% if 'analytics' in request.path %}active{% endif %}" href="{% url 'analytics:dashboard' %}">
                 <i class="fas fa-chart-bar"></i> Analytics
             </a>
+            <!-- ===================== -->
+
             <a class="nav-link disabled" href="#">
                 <i class="fas fa-history"></i> Histórico
             </a>

@@ -9,6 +9,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('dashboard.urls')),      # La página principal será para cargar datos
     path('data/', include('consultas.urls')), # El explorador de datos estará en /data/
+    path('analytics/', include('analytics.urls')),
 ]
 
 # Servir archivos de medios solo en modo de desarrollo (DEBUG=True)

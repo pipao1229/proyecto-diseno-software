@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Mi app
     'dashboard',
     'consultas',
+    'analytics',
 ]
 
 MIDDLEWARE = [
