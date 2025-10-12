@@ -1,0 +1,272 @@
+{% extends 'dashboard/_base.html' %} 
+{% load static %} 
+
+{% block content %}
+<style>
+    /* Estilos para el Tema Oscuro y Píldoras de Filtro (sin cambios) */
+    body {
+        background-color: #212529; /* Fondo oscuro */
+        color: #f8f9fa; /* Texto claro */
+    }
+    .card {
+        background-color: #343a40;
+        border: 1px solid #495057;
+    }
+    .card-header, .table {
+        color: #f8f9fa;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #495057;
+        color: #fff;
+    }
+    .form-label {
+        color: #ced4da;
+    }
+    .filter-pills .btn {
+        margin: 2px;
+        background-color: #495057;
+        color: #f8f9fa;
+        border: 1px solid #6c757d;
+        font-size: 0.8rem;
+    }
+    .filter-pills .btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .filter-section h6 {
+        margin-top: 1rem;
+        color: #adb5bd;
+    }
+    .form-control {
+        background-color: #495057;
+        color: #fff;
+        border: 1px solid #6c757d;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Panel de Filtros (sin cambios) -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between">
+            <h5><i class="fas fa-filter"></i> Filtros Dinámicos</h5>
+            <div>
+                <button id="clear-filters-btn" class="btn btn-secondary btn-sm">Limpiar Filtros</button>
+                <button class="btn btn-success btn-sm" disabled>Guardar Filtros (Próximamente)</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="age-slider" class="form-label">Edad: <span id="age-range-label">17 - 98 años</span></label>
+                    <div class="d-flex">
+                        <input type="number" id="age_min" class="form-control form-control-sm me-2" placeholder="Min">
+                        <input type="number" id="age_max" class="form-control form-control-sm" placeholder="Max">
+                    </div>
+                </div>
+
+                {% for field in form %}
+                    {% if field.name not in "age_min,age_max,sort_by" %}
+                    <div class="col-md-6 filter-section">
+                        <h6>{{ field.label }}</h6>
+                        <div class="filter-pills" id="pills-{{ field.name }}">
+                            {% for value, text in field.field.choices %}
+                            <button class="btn btn-sm" data-field="{{ field.name }}" data-value="{{ value }}">{{ text }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de la Tabla de Datos (sin cambios) -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 id="table-title">Explorador de Datos</h5>
+            <div>
+                <a id="export-csv" href="#" class="btn btn-success btn-sm">Exportar CSV</a>
+                <a id="export-excel" href="#" class="btn btn-info btn-sm">Exportar Excel</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr></tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <tr><td colspan="6" class="text-center">Cargando datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+             <nav id="pagination-nav"></nav>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currentFilters = {
+        page: 1,
+        sort_by: 'id'
+    };
+    
+    // --- NUEVA FUNCIÓN PARA CONSTRUIR LA URL CORRECTAMENTE ---
+    function buildQueryString(params) {
+        const parts = [];
+        for (const key in params) {
+            const value = params[key];
+            if (Array.isArray(value)) {
+                // Si el valor es un array, repetimos la clave por cada valor
+                value.forEach(v => {
+                    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`);
+                });
+            } else if (value !== null && value !== undefined && value !== '') {
+                // Para valores simples, lo agregamos normalmente
+                parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+            }
+        }
+        return parts.join('&');
+    }
+
+    // Función principal para obtener y renderizar datos
+    async function fetchData() {
+        const tableBody = document.getElementById('data-table-body');
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
+        
+        // --- MODIFICACIÓN: Usamos nuestra nueva función ---
+        const queryString = buildQueryString(currentFilters);
+        
+        try {
+            const response = await fetch(`/data/api/filter-data/?${queryString}`);
+            if (!response.ok) {
+                throw new Error(`Error en la solicitud: ${response.statusText}`);
+            }
+            const data = await response.json();
+            
+            updateTable(data);
+            updatePagination(data);
+            updateExportLinks(queryString);
+
+        } catch (error) {
+            console.error('Error al obtener datos:', error);
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar los datos.</td></tr>';
+        }
+    }
+    
+    function updateTable(data) {
+        const tableBody = document.getElementById('data-table-body');
+        const tableHead = document.querySelector('table thead tr');
+        
+        const headers = {'id': 'ID', 'age': 'Edad', 'job': 'Ocupación', 'marital': 'E. Civil', 'education': 'Educación', 'balance': 'Balance'};
+        let headHtml = '';
+        for (const key in headers) {
+            let sortKey = key;
+            if (currentFilters.sort_by === key) sortKey = `-${key}`;
+            headHtml += `<th><a href="#" class="sort-link" data-sort="${sortKey}">${headers[key]}</a></th>`;
+        }
+        tableHead.innerHTML = headHtml;
+
+        let bodyHtml = '';
+        if (data.records && data.records.length > 0) {
+            data.records.forEach(rec => {
+                bodyHtml += `<tr>
+                    <td>${rec.id}</td>
+                    <td>${rec.age}</td>
+                    <td>${rec.job}</td>
+                    <td>${rec.marital}</td>
+                    <td>${rec.education}</td>
+                    <td>${rec.balance}€</td>
+                </tr>`;
+            });
+        } else {
+            bodyHtml = '<tr><td colspan="6" class="text-center">No se encontraron registros.</td></tr>';
+        }
+        tableBody.innerHTML = bodyHtml;
+        document.getElementById('table-title').textContent = `Explorador de Datos (Total: ${data.total_records})`;
+    }
+
+    function updatePagination(data) {
+        const nav = document.getElementById('pagination-nav');
+        if (!data || data.total_pages <= 1) {
+            nav.innerHTML = ''; return;
+        }
+        let navHtml = '<ul class="pagination justify-content-center">';
+        if (data.has_previous) {
+            navHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Anterior</a></li>`;
+        }
+        navHtml += `<li class="page-item active"><span class="page-link">Página ${data.current_page} de ${data.total_pages}</span></li>`;
+        if (data.has_next) {
+            navHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Siguiente</a></li>`;
+        }
+        navHtml += '</ul>';
+        nav.innerHTML = navHtml;
+    }
+
+    function updateExportLinks(queryString) {
+        document.getElementById('export-csv').href = `/data/export/?format=csv&${queryString}`;
+        document.getElementById('export-excel').href = `/data/export/?format=excel&${queryString}`;
+    }
+    
+    // --- MANEJADORES DE EVENTOS (SIN CAMBIOS) ---
+    const ageMinInput = document.getElementById('age_min');
+    const ageMaxInput = document.getElementById('age_max');
+
+    document.querySelectorAll('.filter-pills .btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            this.classList.toggle('active');
+            const field = this.dataset.field;
+            const value = this.dataset.value;
+
+            if (!currentFilters[field]) currentFilters[field] = [];
+            
+            const index = currentFilters[field].indexOf(value);
+            if (index > -1) {
+                currentFilters[field].splice(index, 1);
+            } else {
+                currentFilters[field].push(value);
+            }
+            if(currentFilters[field].length === 0) delete currentFilters[field];
+
+            currentFilters.page = 1;
+            fetchData();
+        });
+    });
+
+    [ageMinInput, ageMaxInput].forEach(input => {
+        input.addEventListener('input', function() {
+            currentFilters.age_min = ageMinInput.value;
+            currentFilters.age_max = ageMaxInput.value;
+            currentFilters.page = 1;
+            fetchData();
+        });
+    });
+
+    document.body.addEventListener('click', function(e) {
+        if (e.target.matches('.page-link')) {
+            e.preventDefault();
+            currentFilters.page = e.target.dataset.page;
+            fetchData();
+        }
+        if (e.target.matches('.sort-link')) {
+            e.preventDefault();
+            currentFilters.sort_by = e.target.dataset.sort;
+            currentFilters.page = 1;
+            fetchData();
+        }
+    });
+
+    document.getElementById('clear-filters-btn').addEventListener('click', function() {
+        window.location.href = "{% url 'consultas:data_explorer' %}";
+    });
+
+    fetchData();
+});
+</script>
+
+{% endblock content %}
+
+{% block scripts %}{% endblock scripts %}

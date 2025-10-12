@@ -1,0 +1,23 @@
+<!-- Archivo: upload_dataset.html (CORRECTO) -->
+{% extends 'dashboard/_base.html' %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h4 class="mb-0">Carga y Validación de Datos</h4>
+    </div>
+    <div class="card-body">
+        <p class="card-text">
+            Sube tu dataset en formato CSV. El sistema validará que la estructura y los tipos de datos sean correctos. Los datos actuales serán reemplazados.
+        </p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.file.label_tag }}
+                {{ form.file }}
+            </div>
+            <button type="submit" class="btn btn-primary">Validar Archivo</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
