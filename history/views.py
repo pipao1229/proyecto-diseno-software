@@ -21,10 +21,9 @@ def history_view(request):
     """
     history_log = QueryHistory.objects.all()
     
-    # Calcular Estadísticas de Uso como en el prototipo
+    # Calcular Estadísticas de Uso 
     total_queries = QueryHistory.objects.count()
     saved_filters_count = SavedFilter.objects.count()
-    # Ahora 'models.Avg' funcionará porque hemos importado 'models'
     avg_records_per_query = QueryHistory.objects.aggregate(avg=models.Avg('records_count'))['avg'] or 0
     
     # Tomamos la consulta más reciente del historial
@@ -63,7 +62,7 @@ def export_history_view(request):
 
     return response
 
-@csrf_exempt # Usado para simplicidad, en un proyecto real se usaría CSRF Token
+@csrf_exempt
 def log_event_api_view(request):
     if request.method == 'POST':
         try:
@@ -88,7 +87,6 @@ def log_event_api_view(request):
 
 @require_POST
 def log_clear_filters_event(request):
-    # En una app real, aquí verificarías que el usuario está autenticado
     try:
         data = json.loads(request.body)
         QueryHistory.objects.create(

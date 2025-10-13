@@ -69,9 +69,9 @@ WSGI_APPLICATION = 'campaign_analyzer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'campaign_db',         # El nombre EXACTO de la base de datos que creaste
-        'USER': 'postgres_user',       # El nombre EXACTO del usuario que creaste
-        'PASSWORD': 'proyectoDS1234*', # La contraseña que le pusiste a 'postgres_user'
+        'NAME': 'campaign_db',         # El nombre EXACTO de la base de datos creada
+        'USER': 'postgres_user',       # El nombre EXACTO del usuario creado
+        'PASSWORD': 'proyectoDS1234*', # La contraseña que se le asignó a 'postgres_user'
         'HOST': 'localhost',           # Significa que la BD está en la misma máquina
         'PORT': '5432',                # El puerto por defecto de PostgreSQL
     }

@@ -1,6 +1,6 @@
 # analytics/services.py
 
-from django.db import models # <-- ¡LA LÍNEA QUE FALTABA!
+from django.db import models
 from django.db.models import (
     Avg, Count, Sum, Case, When, Value, IntegerField, F, Q, FloatField
 )

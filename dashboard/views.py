@@ -18,7 +18,6 @@ from .services.csv_importer import CsvDataImporter
 
 
 def upload_dataset_view(request):
-    # Limpiar errores antiguos de la sesión al cargar la página
     if 'upload_errors' in request.session:
         del request.session['upload_errors']
     if 'error_report_filename' in request.session:
@@ -46,12 +45,10 @@ def upload_dataset_view(request):
                 except Exception as e:
                     errors.append(f"Error crítico al guardar en la base de datos: {str(e)}")
             
-            # --- MODIFICACIÓN CLAVE ---
             # Si hay errores, los guardamos en la sesión para el reporte PDF
             if errors:
                 request.session['upload_errors'] = errors
                 request.session['error_report_filename'] = uploaded_file.name
-            # --- FIN DE LA MODIFICACIÓN ---
 
             context['errors'] = errors
             context['records_loaded'] = len(valid_records) if success else 0
@@ -65,7 +62,6 @@ def upload_dataset_view(request):
     return render(request, 'dashboard/upload_dataset.html', context)
 
 
-# --- VISTA COMPLETAMENTE NUEVA PARA EL PDF ---
 def generate_error_report_pdf_view(request):
     """
     Genera un reporte en PDF con los errores de validación

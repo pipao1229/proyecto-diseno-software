@@ -17,7 +17,6 @@ class CsvDataImporter(BaseDataImporter):
 
     def process_file(self):
         try:
-            # ¡LA SOLUCIÓN! Le decimos a Pandas que el separador es un punto y coma.
             df = pd.read_csv(self.file, sep=';') 
         except Exception as e:
             self.errors.append(f"Error de formato de archivo. No se pudo leer el CSV: {str(e)}")

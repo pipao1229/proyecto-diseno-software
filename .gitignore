@@ -18,7 +18,7 @@ Thumbs.db
 # Archivos de log
 *.log
 
-# Base de datos local (si usas SQLite, lo cual no es nuestro caso, pero es bueno tenerlo)
+# Base de datos local (si se usa SQLite, lo cual no es nuestro caso, pero es bueno tenerlo)
 *.sqlite3
 
 # Archivos de entorno para secretos (práctica recomendada para el futuro)

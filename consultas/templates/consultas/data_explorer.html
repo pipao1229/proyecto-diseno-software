@@ -2,7 +2,7 @@
 
 {% block content %}
 <style>
-    /* Estilos del Tema Oscuro (sin cambios) */
+    /* Estilos del Tema Oscuro */
     .card { background-color: #343a40; border: 1px solid #495057; }
     .card-header, .table { color: #f8f9fa; }
     .table-hover tbody tr:hover { background-color: #495057; color: #fff; }
@@ -73,7 +73,6 @@
                     <h6>Filtros Guardados:</h6>
                     <div class="list-group">
                         {% for filter in saved_filters %}
-                        <!-- CADA FILTRO AHORA TIENE SU PROPIO BOTÓN DE BORRADO -->
                         <div class="list-group-item bg-dark d-flex justify-content-between align-items-center p-0">
                             <a href="{% url 'consultas:load_filter' filter.id %}" class="text-white text-decoration-none flex-grow-1 py-2 px-3">
                                 {{ filter.name }}
@@ -267,7 +266,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('clear-filters-btn').addEventListener('click', () => {
-        // En esta nueva lógica, "Limpiar" solo te redirige a la URL base.
         window.location.href = "{% url 'consultas:data_explorer' %}";
     });
     

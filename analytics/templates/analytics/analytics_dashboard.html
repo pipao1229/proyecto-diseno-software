@@ -2,7 +2,7 @@
 
 {% block content %}
 <style>
-    /* Estilos del Tema Oscuro para Analytics */
+    /* Estilos del Tema Oscuro */
     .kpi-card { background-color: #343a40; border-radius: 8px; padding: 1.25rem; color: #f8f9fa; text-align: center; }
     .kpi-card-title { font-size: 0.9rem; color: #adb5bd; margin-bottom: 0.5rem; }
     .kpi-card-value { font-size: 2rem; font-weight: bold; }
@@ -10,7 +10,7 @@
     .active-filters-bar { background-color: #343a40; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #495057; font-size: 0.9rem; }
 </style>
 
-<!-- Barra de Filtros Activos (Se mostrará si hay filtros en la URL) -->
+<!-- Barra de Filtros Activos -->
 <div id="active-filters-bar" style="display: none;">
     <i class="fas fa-filter"></i> <strong>Filtros activos:</strong>
     <span id="active-filters-text"></span>
@@ -40,7 +40,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- ESTE ES EL CÓDIGO JS COMPLETO Y CORRECTO PARA ANALYTICS ---
     const chartInstances = {};
 
     function displayActiveFiltersFromURL() {
