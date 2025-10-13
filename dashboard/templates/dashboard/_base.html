@@ -76,21 +76,16 @@
         </header>
         
         <nav class="nav-tabs-container">
-            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'dashboard:upload_dataset' %}">
+            <a class="nav-link nav-main-link {% if request.path == '/' %}active{% endif %}" href="{% url 'dashboard:upload_dataset' %}">
                 <i class="fas fa-upload"></i> Carga de Datos
             </a>
-            <a class="nav-link {% if 'data' in request.path %}active{% endif %}" href="{% url 'consultas:data_explorer' %}">
+            <a class="nav-link nav-main-link {% if 'data' in request.path %}active{% endif %}" href="{% url 'consultas:data_explorer' %}">
                 <i class="fas fa-table"></i> Datos
             </a>
-
-            <!-- === CAMBIO AQUÍ === -->
-            <!-- Quitamos 'disabled' y agregamos la lógica de 'active' y el 'href' -->
-            <a class="nav-link {% if 'analytics' in request.path %}active{% endif %}" href="{% url 'analytics:dashboard' %}">
+            <a class="nav-link nav-main-link {% if 'analytics' in request.path %}active{% endif %}" href="{% url 'analytics:dashboard' %}">
                 <i class="fas fa-chart-bar"></i> Analytics
             </a>
-            <!-- ===================== -->
-
-            <a class="nav-link disabled" href="#">
+            <a class="nav-link nav-main-link {% if 'history' in request.path %}active{% endif %}" href="{% url 'history:list' %}">
                 <i class="fas fa-history"></i> Histórico
             </a>
         </nav>
@@ -101,6 +96,28 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    function updateNavLinks(queryString) {
+        document.querySelectorAll('.nav-main-link').forEach(link => {
+            const baseHref = link.getAttribute('href');
+            if (baseHref !== '/') {
+                // Elimina query params viejos y añade los nuevos
+                link.href = baseHref.split('?')[0] + queryString;
+            }
+        });
+    }
+
+    // Al cargar la página, actualiza los links con los filtros actuales
+    document.addEventListener('DOMContentLoaded', function() {
+        updateNavLinks(window.location.search);
+    });
+
+    // Escucha el evento personalizado que dispara `data_explorer.html` cuando los filtros cambian
+    document.addEventListener('filtersUpdated', function(e) {
+        updateNavLinks(e.detail.queryString);
+    });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

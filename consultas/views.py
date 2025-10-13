@@ -1,16 +1,16 @@
 # consultas/views.py
 
 import csv
-import pandas as pd # Aunque no exportemos a Excel, lo dejamos por si se necesita en el futuro
-from io import StringIO, BytesIO
+from io import BytesIO
+from urllib.parse import urlencode
 from django.shortcuts import render, redirect, get_object_or_404
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.paginator import Paginator, EmptyPage
 from django.http import HttpResponse, JsonResponse, QueryDict
 from django.contrib import messages
 from datetime import datetime
+from django.views.decorators.http import require_POST
 
 # Importaciones de ReportLab para el PDF
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, PageBreak
@@ -20,89 +20,93 @@ from dashboard.models import CampaignRecord
 from .forms import CampaignFilterForm
 from .services import FilterManager
 from .models import SavedFilter
+from history.models import QueryHistory
 
 def data_explorer_view(request):
-    """
-    Esta vista ahora solo prepara el esqueleto de la página y el formulario de filtros.
-    El llenado de datos se hará con JavaScript y la API.
-    """
+    """Renderiza el esqueleto de la página."""
     form = CampaignFilterForm()
     saved_filters = SavedFilter.objects.all()
-    
-    context = {
-        'form': form,
-        'saved_filters': saved_filters,
-    }
+    context = { 'form': form, 'saved_filters': saved_filters }
     return render(request, 'consultas/data_explorer.html', context)
 
 
 def filter_data_api_view(request):
-    """
-    Vista de API que maneja las solicitudes AJAX, aplica los filtros,
-    y devuelve los datos de la tabla en formato JSON.
-    """
     queryset = CampaignRecord.objects.all()
     form = CampaignFilterForm(request.GET)
+    if not form.is_valid():
+        return JsonResponse({'error': 'Parámetros inválidos', 'details': form.errors}, status=400)
     
-    if form.is_valid():
-        filtered_queryset = FilterManager.apply_filters(queryset, form.cleaned_data)
-    else:
-        # Devolver un error si los parámetros de la URL son inválidos
-        return JsonResponse({'error': 'Parámetros de filtro inválidos', 'details': form.errors}, status=400)
-
+    filtered_queryset = FilterManager.apply_filters(queryset, form.cleaned_data)
     sort_by = request.GET.get('sort_by', 'id')
-    # Verificamos que el campo de ordenamiento es válido para evitar errores
     valid_sort_fields = [f.name for f in CampaignRecord._meta.get_fields()]
     if sort_by.strip('-') in valid_sort_fields:
         filtered_queryset = filtered_queryset.order_by(sort_by)
 
     paginator = Paginator(filtered_queryset, 25)
     page_number = request.GET.get('page', 1)
-    
     try:
         page_obj = paginator.page(page_number)
     except EmptyPage:
-        # Si la página está fuera de rango, devuelve una página vacía en JSON
         return JsonResponse({'records': [], 'total_records': 0, 'total_pages': 0, 'current_page': page_number})
 
-    records_data = list(page_obj.object_list.values(
-        'id', 'age', 'job', 'marital', 'education', 'balance'
-    ))
-
-    data = {
-        'records': records_data,
-        'total_records': paginator.count,
-        'total_pages': paginator.num_pages,
-        'current_page': page_obj.number,
-        'has_previous': page_obj.has_previous(),
-        'has_next': page_obj.has_next(),
-    }
-    
-    return JsonResponse(data)
-
+    records_data = list(page_obj.object_list.values('id', 'age', 'job', 'marital', 'education', 'balance'))
+    return JsonResponse({
+        'records': records_data, 'total_records': paginator.count, 'total_pages': paginator.num_pages,
+        'current_page': page_obj.number, 'has_previous': page_obj.has_previous(), 'has_next': page_obj.has_next()
+    })
 
 def save_filter_view(request):
     if request.method == 'POST':
         filter_name = request.POST.get('filter_name')
-        query_params = request.POST.get('query_params')
+        query_params_str = request.POST.get('query_params')
 
-        if not filter_name:
-            messages.error(request, "El nombre del filtro no puede estar vacío.")
-        else:
-            params_dict = QueryDict(query_params).dict()
-            if 'csrfmiddlewaretoken' in params_dict:
-                del params_dict['csrfmiddlewaretoken']
-
-            SavedFilter.objects.create(name=filter_name, parameters=params_dict)
-            messages.success(request, f"Filtro '{filter_name}' guardado con éxito.")
+        if filter_name and query_params_str:
+            params_dict = dict(QueryDict(query_params_str, mutable=True).lists())
             
-    return redirect(f"{request.META.get('HTTP_REFERER', '/data/')}?{query_params}")
+            # Limpiamos arrays innecesarios para valores únicos
+            for key in ['page', 'sort_by', 'age_min', 'age_max']:
+                if key in params_dict and isinstance(params_dict[key], list):
+                    params_dict[key] = params_dict[key][0]
+
+            new_filter = SavedFilter.objects.create(name=filter_name, parameters=params_dict)
+            
+            QueryHistory.objects.create(
+                description=f"Se guardó el filtro: '{filter_name}'",
+                records_count=0, # Un guardado no afecta registros directamente
+                filters_applied=params_dict,
+                saved_filter_name=new_filter.name
+            )
+            messages.success(request, f"Filtro '{filter_name}' guardado.")
+    
+    referer_url = request.META.get('HTTP_REFERER', '/data/').split('?')[0]
+    return redirect(f"{referer_url}?{query_params_str}")
 
 def load_filter_view(request, filter_id):
     saved_filter = get_object_or_404(SavedFilter, pk=filter_id)
-    query_string = QueryDict('', mutable=True)
-    query_string.update(saved_filter.parameters)
-    return redirect(f"/data/?{query_string.urlencode()}")
+    
+    # Construir la URL de forma manual y correcta usando urlencode
+    # El argumento 'doseq=True' es la clave para manejar listas
+    query_string = urlencode(saved_filter.parameters, doseq=True)
+
+    QueryHistory.objects.create(
+        description=f"Se cargó el filtro: '{saved_filter.name}'",
+        records_count=0,
+        filters_applied=saved_filter.parameters,
+        saved_filter_name=saved_filter.name
+    )
+    return redirect(f"/data/?{query_string}")
+
+@require_POST
+def delete_filter_view(request, filter_id):
+    saved_filter = get_object_or_404(SavedFilter, pk=filter_id)
+    filter_name = saved_filter.name
+    saved_filter.delete()
+    messages.info(request, f"Filtro '{filter_name}' eliminado.")
+    
+    # Redirige a la URL desde la que se vino, pero sin la acción de borrado
+    referer_url = request.META.get('HTTP_REFERER', '/data/')
+    return redirect(referer_url)
+
 
 def _draw_pdf_table(buffer, title, data, headers):
     """Función auxiliar para dibujar una tabla en un documento PDF."""

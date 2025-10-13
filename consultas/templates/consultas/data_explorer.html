@@ -6,7 +6,7 @@
     .card { background-color: #343a40; border: 1px solid #495057; }
     .card-header, .table { color: #f8f9fa; }
     .table-hover tbody tr:hover { background-color: #495057; color: #fff; }
-    .form-label, h6 { color: #ced4da; }
+    .form-label, h6, .card-title { color: #ced4da; }
     .filter-pills .btn { margin: 2px; background-color: #495057; color: #f8f9fa; border: 1px solid #6c757d; font-size: 0.8rem; }
     .filter-pills .btn.active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
     .filter-section h6 { margin-top: 1rem; }
@@ -18,69 +18,95 @@
     .export-buttons .btn { border-radius: 50px; padding: 6px 16px; font-size: 0.9rem; }
     .pagination .page-link { background-color: #343a40; border-color: #495057; color: #ced4da; }
     .pagination .page-item.active .page-link { background-color: #0d6efd; border-color: #0d6efd; }
+    .list-group-item.bg-dark { background-color: #2c3136 !important; border-color: #495057; }
 </style>
 
-<div class="container-fluid">
-    <div class="row">
-        <!-- Columna de Filtros -->
-        <div class="col-lg-3">
-            <div class="card shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-header d-flex justify-content-between">
-                    <h5><i class="fas fa-filter"></i> Filtros Dinámicos</h5>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9"> 
+
+            <!-- Tarjeta de Filtros Dinámicos -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 card-title"><i class="fas fa-filter"></i> Filtros Dinámicos</h5>
                     <div>
-                         <button id="clear-filters-btn" class="btn btn-secondary btn-sm">Limpiar</button>
+                        <button id="clear-filters-btn" class="btn btn-sm btn-outline-secondary">Limpiar</button>
+                        <button id="toggle-save-section-btn" class="btn btn-sm btn-outline-info">Guardar/Cargar</button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Rango de edad -->
-                    <div class="mb-3">
-                        <label for="age_min" class="form-label">Edad:</label>
-                        <div class="d-flex">
-                            <input type="number" id="age_min" name="age_min" class="form-control form-control-sm me-2" placeholder="Min">
-                            <input type="number" id="age_max" name="age_max" class="form-control form-control-sm" placeholder="Max">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="age_min" class="form-label">Edad:</label>
+                            <div class="d-flex">
+                                <input type="number" id="age_min" name="age_min" class="form-control form-control-sm me-2" placeholder="Min">
+                                <input type="number" id="age_max" name="age_max" class="form-control form-control-sm" placeholder="Max">
+                            </div>
                         </div>
-                    </div>
-                    <!-- Filtros Categóricos -->
-                    {% for field in form %}
-                        {% if field.name not in "age_min,age_max,sort_by" %}
-                        <div class="filter-section">
-                            <h6>{{ field.label }}</h6>
+                        {% for field in form %}{% if field.name not in "age_min,age_max,sort_by" %}
+                        <div class="col-md-6 filter-section">
+                            <h6>{{ field.label }}:</h6>
                             <div class="filter-pills" id="pills-{{ field.name }}">
                                 {% for value, text in field.field.choices %}
                                 <button class="btn btn-sm" data-field="{{ field.name }}" data-value="{{ value }}">{{ text }}</button>
                                 {% endfor %}
                             </div>
                         </div>
-                        {% endif %}
-                    {% endfor %}
+                        {% endif %}{% endfor %}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Columna de Datos -->
-        <div class="col-lg-9">
+            <!-- Sección Ocultable de Guardar y Cargar Filtros -->
+            <div id="save-load-section" class="card shadow-sm mb-4" style="display: none;">
+                <div class="card-header"><h5 class="mb-0 card-title"><i class="fas fa-save"></i> Guardar y Cargar Filtros</h5></div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'consultas:save_filter' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="query_params" id="query_params_hidden_input">
+                        <div class="input-group mb-3">
+                            <input type="text" name="filter_name" class="form-control form-control-sm" placeholder="Nombre para guardar el filtro..." required>
+                            <button type="submit" class="btn btn-success btn-sm">Guardar Filtro</button>
+                        </div>
+                    </form>
+                    <hr style="border-top: 1px solid #495057;">
+                    <h6>Filtros Guardados:</h6>
+                    <div class="list-group">
+                        {% for filter in saved_filters %}
+                        <!-- CADA FILTRO AHORA TIENE SU PROPIO BOTÓN DE BORRADO -->
+                        <div class="list-group-item bg-dark d-flex justify-content-between align-items-center p-0">
+                            <a href="{% url 'consultas:load_filter' filter.id %}" class="text-white text-decoration-none flex-grow-1 py-2 px-3">
+                                {{ filter.name }}
+                            </a>
+                            <form method="post" action="{% url 'consultas:delete_filter' filter.id %}" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este filtro?');" class="me-2">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger delete-btn border-0">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small m-2">No hay filtros guardados.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Explorador de Datos -->
             <div class="card shadow-sm">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 id="table-title">Explorador de Datos</h5>
+                    <h5 id="table-title" class="mb-0 card-title">Explorador de Datos</h5>
                     <div class="export-buttons">
                         <a id="export-csv" href="#" class="btn btn-outline-success btn-sm">Exportar CSV</a>
                         <a id="export-pdf" href="#" class="btn btn-outline-danger btn-sm">Exportar PDF</a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
-                            <thead>
-                                <tr></tr>
-                            </thead>
-                            <tbody id="data-table-body">
-                                <!-- Las filas se insertan aquí vía JS -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="table-responsive"><table class="table table-hover table-sm"><thead><tr></tr></thead><tbody id="data-table-body"></tbody></table></div>
                     <nav id="pagination-nav"></nav>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -89,7 +115,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let currentFilters = { page: 1, sort_by: 'id' };
+    let currentFilters = {};
     let debounceTimer;
 
     function buildQueryString(params) {
@@ -106,29 +132,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fetchData() {
-        const tableBody = document.getElementById('data-table-body');
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
-        
-        // Recolectar el estado actual de los filtros
-        currentFilters.age_min = document.getElementById('age_min').value;
-        currentFilters.age_max = document.getElementById('age_max').value;
+        // 1. RECOLECTAR ESTADO DE LA UI
+        const activeFilters = { 
+            page: currentFilters.page || 1, 
+            sort_by: currentFilters.sort_by || 'id'
+        };
+        activeFilters.age_min = document.getElementById('age_min').value;
+        activeFilters.age_max = document.getElementById('age_max').value;
         document.querySelectorAll('.filter-pills .btn.active').forEach(btn => {
             const field = btn.dataset.field;
-            const value = btn.dataset.value;
-            if (!currentFilters[field]) currentFilters[field] = [];
-            currentFilters[field].push(value);
+            if (!activeFilters[field]) activeFilters[field] = [];
+            activeFilters[field].push(btn.dataset.value);
         });
-
-        const queryString = buildQueryString(currentFilters);
+        const queryString = buildQueryString(activeFilters);
         
+        // 2. ACTUALIZAR ESTADO
+        history.pushState(null, '', `?${queryString}`);
+        document.getElementById('query_params_hidden_input').value = queryString;
+        document.dispatchEvent(new CustomEvent('filtersUpdated', { detail: { queryString: `?${queryString}` }}));
+
+        // 3. LLAMAR A LA API Y ACTUALIZAR
         try {
             const response = await fetch(`/data/api/filter-data/?${queryString}`);
             if (!response.ok) { throw new Error('Error en la solicitud al servidor.'); }
             const data = await response.json();
-            
             updateTable(data);
             updatePagination(data);
-            updateExportLinks(queryString); // Esto ya no fallará
+            updateExportLinks(queryString);
         } catch (error) {
             console.error('Error al obtener datos:', error);
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar los datos.</td></tr>';
@@ -138,7 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateTable(data) {
         const tableBody = document.getElementById('data-table-body');
         const tableHead = document.querySelector('table thead tr');
-        
         const headers = {'id': 'ID', 'age': 'Edad', 'job': 'Ocupación', 'marital': 'E. Civil', 'education': 'Educación', 'balance': 'Balance'};
         let headHtml = '';
         for (const key in headers) {
@@ -147,19 +176,16 @@ document.addEventListener('DOMContentLoaded', function() {
             headHtml += `<th><a href="#" class="sort-link text-white" data-sort="${sortKey}">${headers[key]}</a></th>`;
         }
         tableHead.innerHTML = headHtml;
-
         let bodyHtml = '';
         if (data.records && data.records.length > 0) {
-            data.records.forEach(rec => {
-                bodyHtml += `<tr><td>${rec.id}</td><td>${rec.age}</td><td>${rec.job}</td><td>${rec.marital}</td><td>${rec.education}</td><td>${rec.balance}€</td></tr>`;
-            });
+            data.records.forEach(rec => { bodyHtml += `<tr><td>${rec.id}</td><td>${rec.age}</td><td>${rec.job}</td><td>${rec.marital}</td><td>${rec.education}</td><td>${rec.balance}€</td></tr>`; });
         } else {
             bodyHtml = '<tr><td colspan="6" class="text-center">No se encontraron registros.</td></tr>';
         }
         tableBody.innerHTML = bodyHtml;
         document.getElementById('table-title').textContent = `Explorador de Datos (Total: ${data.total_records})`;
     }
-
+    
     function updatePagination(data) {
         const nav = document.getElementById('pagination-nav');
         if (!data || data.total_pages <= 1) { nav.innerHTML = ''; return; }
@@ -174,51 +200,80 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateExportLinks(queryString) {
         const csvLink = document.getElementById('export-csv');
         const pdfLink = document.getElementById('export-pdf');
-        
         if (csvLink) csvLink.href = `/data/export/?format=csv&${queryString}`;
-        // ¡LA CORRECCIÓN! Usar 'export-pdf' para el botón de PDF.
         if (pdfLink) pdfLink.href = `/data/export/?format=pdf&${queryString}`;
     }
 
     function triggerFetchWithDebounce() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            currentFilters.page = 1; // Siempre resetea a la primera página al cambiar filtros
+            currentFilters.page = 1;
             fetchData();
-        }, 300); // Espera 300ms antes de llamar
+        }, 300);
+    }
+    
+    function initializeFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Sincronizar UI de Edad
+        document.getElementById('age_min').value = urlParams.get('age_min') || '';
+        document.getElementById('age_max').value = urlParams.get('age_max') || '';
+
+        // Sincronizar UI de Píldoras
+        document.querySelectorAll('.filter-pills .btn').forEach(btn => {
+            const field = btn.dataset.field;
+            const valuesInURL = urlParams.getAll(field); // Importante usar getAll para arrays
+            if (valuesInURL.includes(btn.dataset.value)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Sincronizar estado interno del script
+        currentFilters.sort_by = urlParams.get('sort_by') || 'id';
+        currentFilters.page = urlParams.get('page') || 1;
+        
+        // Dispara la búsqueda inicial con los filtros de la URL
+        fetchData(); 
     }
 
-    document.querySelectorAll('.filter-pills .btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            this.classList.toggle('active');
-            triggerFetchWithDebounce();
-        });
-    });
+    // --- ASIGNACIÓN DE EVENTOS ---
+    document.querySelectorAll('.filter-pills .btn').forEach(btn => btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.target.classList.toggle('active');
+        triggerFetchWithDebounce();
+    }));
 
-    [document.getElementById('age_min'), document.getElementById('age_max')].forEach(input => {
-        input.addEventListener('input', triggerFetchWithDebounce);
+    [document.getElementById('age_min'), document.getElementById('age_max')].forEach(input => input.addEventListener('input', triggerFetchWithDebounce));
+    
+    document.getElementById('toggle-save-section-btn').addEventListener('click', () => {
+        const section = document.getElementById('save-load-section');
+        section.style.display = section.style.display === 'none' ? 'block' : 'none';
     });
-
-    document.body.addEventListener('click', function(e) {
+    
+    document.body.addEventListener('click', e => {
         if (e.target.matches('.page-link')) {
             e.preventDefault();
             currentFilters.page = e.target.dataset.page;
-            fetchData(); // La paginación debe ser inmediata
+            fetchData();
         }
         if (e.target.matches('.sort-link')) {
             e.preventDefault();
             currentFilters.sort_by = e.target.dataset.sort;
             currentFilters.page = 1;
-            fetchData(); // El ordenamiento también debe ser inmediato
+            fetchData();
         }
     });
 
-    document.getElementById('clear-filters-btn').addEventListener('click', function() {
+    document.getElementById('clear-filters-btn').addEventListener('click', () => {
+        // En esta nueva lógica, "Limpiar" solo te redirige a la URL base.
         window.location.href = "{% url 'consultas:data_explorer' %}";
     });
+    
+    // --- INICIO ---
+    initializeFromURL();
 
-    fetchData(); // Carga inicial de datos
 });
 </script>
 {% endblock scripts %}

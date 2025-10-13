@@ -2,64 +2,22 @@
 
 {% block content %}
 <style>
-    .kpi-card {
-        background-color: #343a40;
-        border-radius: 8px;
-        padding: 1.25rem;
-        color: #f8f9fa;
-    }
-    .kpi-card-title {
-        font-size: 0.9rem;
-        color: #adb5bd;
-        margin-bottom: 0.5rem;
-    }
-    .kpi-card-value {
-        font-size: 2rem;
-        font-weight: bold;
-    }
-    .chart-container {
-        background-color: #343a40;
-        padding: 1rem;
-        border-radius: 8px;
-        position: relative; /* Necesario para que el responsive de Chart.js funcione bien */
-        height: 350px;
-    }
-    /* Estilos de píldoras del otro tab */
-    .filter-pills .btn { margin: 2px; background-color: #495057; color: #f8f9fa; border: 1px solid #6c757d; font-size: 0.8rem; }
-    .filter-pills .btn.active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
-    .filter-section h6 { margin-top: 1rem; color: #adb5bd; }
+    /* Estilos del Tema Oscuro para Analytics */
+    .kpi-card { background-color: #343a40; border-radius: 8px; padding: 1.25rem; color: #f8f9fa; text-align: center; }
+    .kpi-card-title { font-size: 0.9rem; color: #adb5bd; margin-bottom: 0.5rem; }
+    .kpi-card-value { font-size: 2rem; font-weight: bold; }
+    .chart-container { background-color: #343a40; padding: 1rem; border-radius: 8px; position: relative; height: 350px; }
+    .active-filters-bar { background-color: #343a40; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #495057; font-size: 0.9rem; }
 </style>
 
-<!-- FILTROS -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between">
-        <h5><i class="fas fa-filter"></i> Filtros Dinámicos</h5>
-        <div>
-            <button id="clear-filters-btn" class="btn btn-secondary btn-sm">Limpiar Filtros</button>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <!-- Rango de edad -->
-            <div class="col-md-12 mb-3">
-                <label for="age_min" class="form-label">Edad:</label>
-                <div class="d-flex">
-                    <input type="number" id="age_min" class="form-control form-control-sm me-2" placeholder="Min">
-                    <input type="number" id="age_max" class="form-control form-control-sm" placeholder="Max">
-                </div>
-            </div>
-            <!-- Filtros Categóricos -->
-            {% for field in form %}{% if field.name not in "age_min,age_max,sort_by" %}<div class="col-md-4 filter-section"><h6>{{ field.label }}</h6><div class="filter-pills" id="pills-{{ field.name }}">{% for value, text in field.field.choices %}<button class="btn btn-sm" data-field="{{ field.name }}" data-value="{{ value }}">{{ text }}</button>{% endfor %}</div></div>{% endif %}{% endfor %}
-        </div>
-    </div>
+<!-- Barra de Filtros Activos (Se mostrará si hay filtros en la URL) -->
+<div id="active-filters-bar" style="display: none;">
+    <i class="fas fa-filter"></i> <strong>Filtros activos:</strong>
+    <span id="active-filters-text"></span>
 </div>
 
-<!-- KPIs -->
-<div class="row g-4 mb-4" id="kpi-cards-container">
-    <!-- Las tarjetas KPI se insertarán aquí -->
-</div>
-
-<!-- Gráficos -->
+<!-- Contenedores para KPIs y Gráficos -->
+<div class="row g-4 mb-4" id="kpi-cards-container"><p class="text-center">Cargando KPIs...</p></div>
 <div class="row g-4">
     <div class="col-lg-8"><div class="chart-container"><canvas id="conversionPorEdadChart"></canvas></div></div>
     <div class="col-lg-4"><div class="chart-container"><canvas id="distribucionResultadosChart"></canvas></div></div>
@@ -82,73 +40,88 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let currentFilters = {};
-    const chartInstances = {}; // Para destruir y recrear gráficos
+    // --- ESTE ES EL CÓDIGO JS COMPLETO Y CORRECTO PARA ANALYTICS ---
+    const chartInstances = {};
 
-    function buildQueryString(params) {
-        const parts = [];
-        for (const key in params) { const value = params[key]; if (Array.isArray(value)) { value.forEach(v => parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`)); } else if (value) { parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`); } }
-        return parts.join('&');
+    function displayActiveFiltersFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeFilterParts = [];
+        const tempFilters = {};
+
+        urlParams.forEach((value, key) => {
+            if (key !== 'page' && key !== 'sort_by') {
+                if (!tempFilters[key]) tempFilters[key] = [];
+                tempFilters[key].push(value);
+            }
+        });
+
+        if (tempFilters.age_min || tempFilters.age_max) {
+             activeFilterParts.push(`Edad: ${tempFilters.age_min || '?'} - ${tempFilters.age_max || '?'}`);
+             delete tempFilters.age_min;
+             delete tempFilters.age_max;
+        }
+
+        for (const [key, values] of Object.entries(tempFilters)) {
+             let label = key.charAt(0).toUpperCase() + key.slice(1);
+             activeFilterParts.push(`${label}: ${values.join(', ')}`);
+        }
+        
+        const filterText = activeFilterParts.join(' | ');
+        if (filterText) {
+            document.getElementById('active-filters-text').textContent = filterText;
+            document.getElementById('active-filters-bar').style.display = 'block';
+        } else {
+            document.getElementById('active-filters-text').textContent = " Sin filtros aplicados";
+            document.getElementById('active-filters-bar').style.display = 'block';
+        }
+    }
+    
+    async function fetchData() {
+        const queryString = window.location.search.substring(1);
+        try {
+            const response = await fetch(`/analytics/api/kpi-data/?${queryString}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            updateDashboard(data);
+        } catch (error) {
+            console.error("Error fetching analytics data:", error);
+            document.getElementById('kpi-cards-container').innerHTML = `<p class="text-center text-danger">Error al cargar los datos.</p>`;
+        }
     }
     
     function renderKpiCards(kpis) {
         const container = document.getElementById('kpi-cards-container');
         const kpiMap = {
             tasa_conversion: { title: 'Tasa de Conversión', suffix: '%' },
-            total_contactos: { title: 'Total de Contactos', suffix: '' },
-            duracion_promedio: { title: 'Duración Promedio', suffix: 's' },
-            rentabilidad_proyectada: { title: 'Rentabilidad Proyectada', suffix: '€' },
-            clientes_aceptaron: { title: 'Clientes que Aceptaron', suffix: '' },
-            historiales_exitosos: { title: 'Historiales Exitosos', suffix: '' },
+            total_contactos: { title: 'Total de Contactos', suffix: '', decimals: 0 },
+            duracion_promedio: { title: 'Duración Promedio', suffix: 's', decimals: 0 },
+            rentabilidad_proyectada: { title: 'Rentabilidad Proyectada', suffix: '€', decimals: 0 },
+            clientes_aceptaron: { title: 'Clientes que Aceptaron', suffix: '', decimals: 0 },
+            historiales_exitosos: { title: 'Historiales Exitosos', suffix: '', decimals: 0 },
             impacto_historial: { title: 'Impacto Historial', suffix: '%' },
-            indice_eficiencia: { title: 'Índice Eficiencia', suffix: ' /contacto', decimals: 2 },
+            indice_eficiencia: { title: 'Índice Eficiencia', suffix: '', decimals: 2 },
             ganancia_por_llamada: { title: 'Ganancia por Llamada', suffix: '€', decimals: 2 },
         };
         let html = '';
         for (const [key, config] of Object.entries(kpiMap)) {
-            const value = kpis[key];
+            const value = kpis[key] || 0;
             const decimals = 'decimals' in config ? config.decimals : 1;
-            html += `
-                <div class="col-md-4 col-lg-3">
-                    <div class="kpi-card">
-                        <div class="kpi-card-title">${config.title}</div>
-                        <div class="kpi-card-value">${parseFloat(value).toFixed(decimals)}${config.suffix}</div>
-                    </div>
-                </div>`;
+            const finalValue = parseFloat(value).toFixed(decimals);
+            html += `<div class="col-md-4 col-lg-3"><div class="kpi-card"><div class="kpi-card-title">${config.title}</div><div class="kpi-card-value">${finalValue}${config.suffix}</div></div></div>`;
         }
         container.innerHTML = html;
     }
 
     function renderChart(chartId, type, data, specificOptions = {}) {
-        const ctx = document.getElementById(chartId).getContext('2d');
-        if (chartInstances[chartId]) {
-            chartInstances[chartId].destroy();
-        }
-        
-        // Opciones por defecto para TODOS los gráficos
+        const ctx = document.getElementById(chartId)?.getContext('2d');
+        if (!ctx) return;
+        if (chartInstances[chartId]) chartInstances[chartId].destroy();
         const defaultOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: { color: '#adb5bd' } // Texto de la leyenda en color claro
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#adb5bd' }, // Texto del eje X
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' } // Líneas de la cuadrícula
-                },
-                y: {
-                    ticks: { color: '#adb5bd' }, // Texto del eje Y
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                }
-            }
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#adb5bd' } } },
+            scales: { x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }, y: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } } }
         };
-
-        // Unimos las opciones por defecto con las específicas de cada gráfico
-        const finalOptions = deepMerge(defaultOptions, specificOptions);
-
+        const finalOptions = { ...defaultOptions, ...specificOptions };
         chartInstances[chartId] = new Chart(ctx, { type, data, options: finalOptions });
     }
 
@@ -172,18 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return (item && typeof item === 'object' && !Array.isArray(item));
     }
 
-    async function fetchData() { /* ... (igual, pero llama a /analytics/api/kpi-data/ y actualiza dashboard) ... */
-        const queryString = buildQueryString(currentFilters);
-        try {
-            const response = await fetch(`/analytics/api/kpi-data/?${queryString}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            updateDashboard(data);
-        } catch (error) {
-            console.error("Error fetching analytics data:", error);
-        }
-    }
-
     function updateDashboard(data) {
         renderKpiCards(data.kpi_cards);
 
@@ -204,13 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
         renderChart('diasUltimoContactoChart', 'bar', { labels: data.charts.dias_ultimo_contacto.labels, datasets: [{ label: 'Días desde Último Contacto', data: data.charts.dias_ultimo_contacto.data }] });
     }
 
-    function buildQueryString(params) {const parts = []; for (const key in params) { const value = params[key]; if (Array.isArray(value)) { value.forEach(v => { parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`); }); } else if (value !== null && value !== undefined && value !== '') { parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`); } } return parts.join('&'); }
-    document.querySelectorAll('.filter-pills .btn').forEach(btn => { btn.addEventListener('click', function(e) { e.preventDefault(); this.classList.toggle('active'); const field = this.dataset.field; const value = this.dataset.value; if (!currentFilters[field]) currentFilters[field] = []; const index = currentFilters[field].indexOf(value); if (index > -1) { currentFilters[field].splice(index, 1); } else { currentFilters[field].push(value); } if(currentFilters[field].length === 0) delete currentFilters[field]; fetchData(); }); });
-    const ageMinInput = document.getElementById('age_min'); const ageMaxInput = document.getElementById('age_max');
-    [ageMinInput, ageMaxInput].forEach(input => { input.addEventListener('input', function() { currentFilters.age_min = ageMinInput.value; currentFilters.age_max = ageMaxInput.value; fetchData(); }); });
-    document.getElementById('clear-filters-btn').addEventListener('click', function() { window.location.href = "{% url 'analytics:dashboard' %}"; });
-
     // Carga inicial
+    displayActiveFiltersFromURL();
     fetchData();
 });
 </script>

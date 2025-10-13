@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'dashboard',
     'consultas',
     'analytics',
+    'history',
 ]
 
 MIDDLEWARE = [
