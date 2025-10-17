@@ -21,5 +21,21 @@ class CampaignFilterForm(forms.Form):
     EDUCATION_CHOICES = [("primary","Primary"), ("secondary","Secondary"), ("tertiary", "Tertiary"), ("unknown","Unknown")]
     education = forms.MultipleChoiceField(label="Educación", choices=EDUCATION_CHOICES, required=False)
     
+    CONTACT_CHOICES = [("cellular", "Cellular"), ("telephone", "Telephone"), ("unknown", "Unknown")]
+    contact = forms.MultipleChoiceField(
+        label="Canal de Contacto", 
+        choices=CONTACT_CHOICES, 
+        required=False
+    )
+
+    RESULT_CHOICES = [("yes", "Aceptó"), ("no", "No Aceptó")]
+    y = forms.ChoiceField(
+        label="Resultado", 
+        choices=[("", "Todos")] + RESULT_CHOICES,
+        required=False,
+        # AÑADIMOS EL WIDGET PARA APLICAR LAS CLASES
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
+    )
+
     # También añadimos un campo oculto para mantener el estado de ordenamiento
     sort_by = forms.CharField(widget=forms.HiddenInput(), required=False)

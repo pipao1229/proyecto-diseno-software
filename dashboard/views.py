@@ -4,7 +4,7 @@ import io
 from datetime import datetime
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from django.db import transaction
+from django.db import transaction, connection
 from django.contrib import messages
 
 # Importaciones para la generación de PDF
@@ -15,6 +15,7 @@ from reportlab.lib.units import inch
 from .forms import DatasetUploadForm
 from .models import CampaignRecord
 from .services.csv_importer import CsvDataImporter
+from history.models import QueryHistory
 
 
 def upload_dataset_view(request):
@@ -34,16 +35,26 @@ def upload_dataset_view(request):
             importer.process_file()
             valid_records, errors = importer.get_results()
 
-            success = False
             if valid_records and not errors:
                 try:
-                    with transaction.atomic():
-                        CampaignRecord.objects.all().delete()
-                        CampaignRecord.objects.bulk_create(valid_records, batch_size=1000)
-                    context['success_message'] = f"¡Éxito! Se cargaron y validaron {len(valid_records)} registros."
+                    # Usamos un cursor para ejecutar SQL crudo de forma segura
+                    with connection.cursor() as cursor:
+                        # === LA CORRECCIÓN CLAVE ===
+                        # 2. Obtenemos los nombres de las tablas de forma dinámica
+                        table_name_campaign = CampaignRecord._meta.db_table
+                        table_name_history = QueryHistory._meta.db_table
+                        
+                        # 3. Ejecutamos TRUNCATE que resetea los IDs (para PostgreSQL)
+                        cursor.execute(f'TRUNCATE TABLE "{table_name_campaign}" RESTART IDENTITY CASCADE;')
+                        cursor.execute(f'TRUNCATE TABLE "{table_name_history}" RESTART IDENTITY CASCADE;')
+
+                    # Ahora que las tablas están limpias y reseteadas, insertamos los nuevos datos
+                    CampaignRecord.objects.bulk_create(valid_records, batch_size=1000)
+                    
+                    context['success_message'] = f"¡Éxito! Se cargaron y validaron {len(valid_records)} registros. Los datos y el historial anterior han sido reiniciados."
                     success = True
                 except Exception as e:
-                    errors.append(f"Error crítico al guardar en la base de datos: {str(e)}")
+                    errors.append(f"Error crítico al interactuar con la base de datos: {str(e)}")
             
             # Si hay errores, los guardamos en la sesión para el reporte PDF
             if errors:

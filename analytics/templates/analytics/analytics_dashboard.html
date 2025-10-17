@@ -111,57 +111,80 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = html;
     }
 
-    function renderChart(chartId, type, data, specificOptions = {}) {
+    function renderChart(chartId, type, data, specificOptions = {}, isPercentage = false) {
         const ctx = document.getElementById(chartId)?.getContext('2d');
         if (!ctx) return;
-        if (chartInstances[chartId]) chartInstances[chartId].destroy();
+        
+        if (chartInstances[chartId]) {
+            chartInstances[chartId].destroy();
+        }
+
         const defaultOptions = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#adb5bd' } } },
-            scales: { x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }, y: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } } }
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#adb5bd' } },
+                tooltip: { callbacks: {} }
+            },
+            scales: {
+                x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                y: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+            }
         };
-        const finalOptions = { ...defaultOptions, ...specificOptions };
+        
+        if (isPercentage) {
+            defaultOptions.plugins.tooltip.callbacks.label = context => `${context.dataset.label || ''}: ${context.parsed.y.toFixed(2)}%`;
+            defaultOptions.scales.y.ticks.callback = value => `${value}%`;
+        }
+
+        // Función auxiliar para unir opciones de gráficos de forma anidada
+        function deepMerge(target, source) {
+            const output = { ...target };
+            if (isObject(target) && isObject(source)) {
+                Object.keys(source).forEach(key => {
+                    if (isObject(source[key])) {
+                        if (!(key in target)) Object.assign(output, { [key]: source[key] });
+                        else output[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        Object.assign(output, { [key]: source[key] });
+                    }
+                });
+            }
+            return output;
+        }
+
+        function isObject(item) {
+            return (item && typeof item === 'object' && !Array.isArray(item));
+        }
+
+        const finalOptions = deepMerge(defaultOptions, specificOptions);
+
         chartInstances[chartId] = new Chart(ctx, { type, data, options: finalOptions });
     }
 
-    // Función auxiliar para unir opciones de gráficos de forma anidada
-    function deepMerge(target, source) {
-        const output = { ...target };
-        if (isObject(target) && isObject(source)) {
-            Object.keys(source).forEach(key => {
-                if (isObject(source[key])) {
-                    if (!(key in target)) Object.assign(output, { [key]: source[key] });
-                    else output[key] = deepMerge(target[key], source[key]);
-                } else {
-                    Object.assign(output, { [key]: source[key] });
-                }
-            });
-        }
-        return output;
-    }
-
-    function isObject(item) {
-        return (item && typeof item === 'object' && !Array.isArray(item));
-    }
-
     function updateDashboard(data) {
+        if (!data) return;
         renderKpiCards(data.kpi_cards);
 
-        // Llamadas para renderizar cada gráfico con los datos de la API
-        renderChart('conversionPorEdadChart', 'bar', { labels: data.charts.conversion_por_edad.labels, datasets: [{ label: 'Tasa de Conversión (%)', data: data.charts.conversion_por_edad.data, backgroundColor: '#0d6efd' }] });
-        renderChart('distribucionResultadosChart', 'doughnut', { labels: data.charts.distribucion_resultados.labels, datasets: [{ data: data.charts.distribucion_resultados.data, backgroundColor: ['#dc3545', '#198754'] }] });
-        renderChart('tendenciaMensualChart', 'line', { labels: data.charts.tendencia_mensual.labels, datasets: [{ label: 'Tasa de Conversión (%)', data: data.charts.tendencia_mensual.data, borderColor: '#0dcaf0', tension: 0.1 }] });
-        renderChart('exitoPorCanalChart', 'bar', { labels: data.charts.exito_por_canal.labels, datasets: [{ label: 'Tasa de Conversión (%)', data: data.charts.exito_por_canal.data, backgroundColor: ['#ffc107', '#fd7e14'] }] });
-        renderChart('contactosPreviosChart', 'bar', { labels: data.charts.contactos_previos_conversion.labels, datasets: [{ label: 'Tasa de Conversión (%)', data: data.charts.contactos_previos_conversion.data, backgroundColor: '#6f42c1' }] }, { scales: { x: { title: { display: true, text: 'Nº Contactos Previos' } } } });
-        renderChart('distribucionDemoraChart', 'bar', { labels: data.charts.distribucion_demora.labels, datasets: [{ label: 'Crédito en Demora', data: data.charts.distribucion_demora.data, backgroundColor: ['#20c997', '#dc3545'] }] });
-        renderChart('distribucionHipotecaChart', 'bar', { labels: data.charts.distribucion_hipoteca.labels, datasets: [{ label: 'Préstamo Hipotecario', data: data.charts.distribucion_hipoteca.data, backgroundColor: ['#20c997', '#dc3545'] }] });
-        renderChart('distribucionPrestamoChart', 'bar', { labels: data.charts.distribucion_prestamo.labels, datasets: [{ label: 'Préstamo Personal', data: data.charts.distribucion_prestamo.data, backgroundColor: ['#20c9t97', '#dc3545'] }] });
-        renderChart('distribucionEdadesChart', 'bar', { labels: data.charts.distribucion_edades.labels, datasets: [{ label: 'Distribución de Edades', data: data.charts.distribucion_edades.data }] });
-        renderChart('distribucionEstadoCivilChart', 'doughnut', { labels: data.charts.distribucion_estado_civil.labels, datasets: [{ data: data.charts.distribucion_estado_civil.data }] });
-        renderChart('distribucionBalanceChart', 'bar', { labels: data.charts.distribucion_balance.labels, datasets: [{ label: 'Distribución de Balance', data: data.charts.distribucion_balance.data }] });
-        renderChart('distribucionDuracionChart', 'line', { labels: data.charts.distribucion_duracion.labels, datasets: [{ label: 'Distribución de Duración', data: data.charts.distribucion_duracion.data, fill: true, backgroundColor: 'rgba(13, 110, 253, 0.2)' }] });
-        renderChart('distribucionDiaMesChart', 'line', { labels: data.charts.distribucion_dia_mes.labels, datasets: [{ label: 'Tasa Conv. por Día del Mes', data: data.charts.distribucion_dia_mes.data }] });
-        renderChart('diasUltimoContactoChart', 'bar', { labels: data.charts.dias_ultimo_contacto.labels, datasets: [{ label: 'Días desde Último Contacto', data: data.charts.dias_ultimo_contacto.data }] });
+        const titleColor = '#f8f9fa';
+
+        // Gráficos de Porcentaje
+        renderChart('conversionPorEdadChart', 'bar', { labels: data.charts.conversion_por_edad.labels, datasets: [{ label: 'Tasa de Conversión', data: data.charts.conversion_por_edad.data, backgroundColor: '#0d6efd' }] }, {plugins: {title: { display: true, text: 'Conversión por Segmento de Edad', color: titleColor }}}, true);
+        renderChart('tendenciaMensualChart', 'line', { labels: data.charts.tendencia_mensual.labels, datasets: [{ label: 'Tasa de Conversión', data: data.charts.tendencia_mensual.data, borderColor: '#0dcaf0', tension: 0.1 }] }, {plugins: {title: { display: true, text: 'Tendencia Mensual de Conversión', color: titleColor }}}, true);
+        renderChart('exitoPorCanalChart', 'bar', { labels: data.charts.exito_por_canal.labels, datasets: [{ label: 'Tasa de Conversión', data: data.charts.exito_por_canal.data, backgroundColor: ['#ffc107', '#fd7e14'] }] }, {plugins: {title: { display: true, text: 'Éxito por Canal de Contacto', color: titleColor }}}, true);
+        renderChart('contactosPreviosChart', 'bar', { labels: data.charts.contactos_previos_conversion.labels, datasets: [{ label: 'Tasa de Conversión', data: data.charts.contactos_previos_conversion.data, backgroundColor: '#6f42c1' }] }, { plugins: {title: { display: true, text: 'Contactos Previos vs Conversión', color: titleColor }}, scales: { x: { title: { display: true, text: 'Nº Contactos Previos', color: '#adb5bd' } } } }, true);
+        renderChart('distribucionDiaMesChart', 'line', { labels: data.charts.distribucion_dia_mes.labels, datasets: [{ label: 'Tasa de Conversión', data: data.charts.distribucion_dia_mes.data, borderColor: '#198754' }] }, {plugins: {title: { display: true, text: 'Distribución de Tasa de Conv. por Día del Mes', color: titleColor }}}, true);
+        
+        // Gráficos de Conteo (isPercentage = false por defecto)
+        renderChart('distribucionResultadosChart', 'doughnut', { labels: data.charts.distribucion_resultados.labels, datasets: [{ data: data.charts.distribucion_resultados.data, backgroundColor: ['#dc3545', '#198754'] }] }, {plugins: {title: { display: true, text: 'Distribución de Resultados', color: titleColor }}});
+        renderChart('distribucionDemoraChart', 'bar', { labels: data.charts.distribucion_demora.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_demora.data, backgroundColor: ['#198754', '#dc3545'] }] }, {plugins: {title: { display: true, text: 'Crédito en Demora', color: titleColor }}});
+        renderChart('distribucionHipotecaChart', 'bar', { labels: data.charts.distribucion_hipoteca.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_hipoteca.data, backgroundColor: ['#198754', '#dc3545'] }] }, {plugins: {title: { display: true, text: 'Préstamo Hipotecario', color: titleColor }}});
+        renderChart('distribucionPrestamoChart', 'bar', { labels: data.charts.distribucion_prestamo.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_prestamo.data, backgroundColor: ['#198754', '#dc3545'] }] }, {plugins: {title: { display: true, text: 'Préstamo Personal', color: titleColor }}});
+        renderChart('distribucionEdadesChart', 'bar', { labels: data.charts.distribucion_edades.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_edades.data, backgroundColor: '#0d6efd' }] }, {plugins: {title: { display: true, text: 'Distribución de Edades', color: titleColor }}});
+        renderChart('distribucionEstadoCivilChart', 'doughnut', { labels: data.charts.distribucion_estado_civil.labels, datasets: [{ data: data.charts.distribucion_estado_civil.data, backgroundColor: ['#0dcaf0', '#0d6efd', '#6f42c1', '#d63384'] }] }, {plugins: {title: { display: true, text: 'Estado Civil', color: titleColor }}});
+        renderChart('distribucionBalanceChart', 'bar', { labels: data.charts.distribucion_balance.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_balance.data, backgroundColor: '#fd7e14' }] }, {plugins: {title: { display: true, text: 'Distribución de Balance', color: titleColor }}});
+        renderChart('distribucionDuracionChart', 'line', { labels: data.charts.distribucion_duracion.labels, datasets: [{ label: 'Clientes', data: data.charts.distribucion_duracion.data, fill: true, backgroundColor: 'rgba(13, 110, 253, 0.2)', borderColor: '#0d6efd' }] }, {plugins: {title: { display: true, text: 'Distribución de Duración de Llamadas', color: titleColor }}});
+        renderChart('diasUltimoContactoChart', 'bar', { labels: data.charts.dias_ultimo_contacto.labels, datasets: [{ label: 'Clientes', data: data.charts.dias_ultimo_contacto.data, backgroundColor: '#ffc107' }] }, {plugins: {title: { display: true, text: 'Análisis de Días desde Último Contacto', color: titleColor }}});
     }
 
     // Carga inicial

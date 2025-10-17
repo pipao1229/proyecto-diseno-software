@@ -26,6 +26,12 @@
         <a href="{% url 'history:export' %}" class="btn btn-outline-success">
             <i class="fas fa-file-csv"></i> Exportar Historial
         </a>
+        <form method="post" action="{% url 'history:clear_history' %}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres borrar todo el historial de consultas? Esta acción es irreversible.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-trash"></i> Limpiar Historial
+            </button>
+        </form>
     </div>
 </div>
 

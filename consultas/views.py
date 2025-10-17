@@ -19,6 +19,7 @@ from reportlab.lib.units import inch
 from dashboard.models import CampaignRecord
 from .forms import CampaignFilterForm
 from .services import FilterManager
+from .services import FilterManager
 from .models import SavedFilter
 from history.models import QueryHistory
 
@@ -49,7 +50,7 @@ def filter_data_api_view(request):
     except EmptyPage:
         return JsonResponse({'records': [], 'total_records': 0, 'total_pages': 0, 'current_page': page_number})
 
-    records_data = list(page_obj.object_list.values('id', 'age', 'job', 'marital', 'education', 'balance'))
+    records_data = list(page_obj.object_list.values('id', 'age', 'job', 'marital', 'education', 'balance', 'contact', 'y'))
     return JsonResponse({
         'records': records_data, 'total_records': paginator.count, 'total_pages': paginator.num_pages,
         'current_page': page_obj.number, 'has_previous': page_obj.has_previous(), 'has_next': page_obj.has_next()
@@ -62,6 +63,10 @@ def save_filter_view(request):
 
         if filter_name and query_params_str:
             params_dict = dict(QueryDict(query_params_str, mutable=True).lists())
+
+            record_count = FilterManager.apply_filters(
+                CampaignRecord.objects.all(), params_dict
+            ).count()
             
             # Limpiamos arrays innecesarios para valores únicos
             for key in ['page', 'sort_by', 'age_min', 'age_max']:
@@ -72,7 +77,7 @@ def save_filter_view(request):
             
             QueryHistory.objects.create(
                 description=f"Se guardó el filtro: '{filter_name}'",
-                records_count=0, # Un guardado no afecta registros directamente
+                records_count=record_count, 
                 filters_applied=params_dict,
                 saved_filter_name=new_filter.name
             )
@@ -83,17 +88,22 @@ def save_filter_view(request):
 
 def load_filter_view(request, filter_id):
     saved_filter = get_object_or_404(SavedFilter, pk=filter_id)
-    
-    # Construir la URL de forma manual y correcta usando urlencode
-    # El argumento 'doseq=True' es la clave para manejar listas
-    query_string = urlencode(saved_filter.parameters, doseq=True)
+    params_dict = saved_filter.parameters
+
+    record_count = FilterManager.apply_filters(
+        CampaignRecord.objects.all(), params_dict
+    ).count()
 
     QueryHistory.objects.create(
         description=f"Se cargó el filtro: '{saved_filter.name}'",
-        records_count=0,
+        records_count=record_count,
         filters_applied=saved_filter.parameters,
         saved_filter_name=saved_filter.name
     )
+
+    # Construir la URL de forma manual y correcta usando urlencode
+    # El argumento 'doseq=True' es la clave para manejar listas
+    query_string = urlencode(saved_filter.parameters, doseq=True)
     return redirect(f"/data/?{query_string}")
 
 @require_POST

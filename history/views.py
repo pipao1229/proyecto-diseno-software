@@ -2,18 +2,18 @@
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.db.models import Avg
 import csv
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.db import models
 from .models import QueryHistory
 from consultas.models import SavedFilter
-from dashboard.models import CampaignRecord # No se usa directamente aquí, pero es bueno tenerla para el contexto
 
 def history_view(request):
     """
@@ -63,27 +63,26 @@ def export_history_view(request):
     return response
 
 @csrf_exempt
-def log_event_api_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            description = data.get('description')
-            filters_str = data.get('filters', '').lstrip('?')
-            
-            # Recreamos el diccionario de filtros desde la query string
-            filters_dict = QueryDict(filters_str).dict()
-            
-            if description:
-                QueryHistory.objects.create(
-                    description=description,
-                    records_count=0, # Podríamos calcular esto si fuera necesario
-                    filters_applied=filters_dict or None
-                )
-                return JsonResponse({'status': 'ok'})
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    
-    return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+@require_POST
+def log_event_view(request):
+    try:
+        data = json.loads(request.body)
+        description = data.get('description', 'Evento sin descripción')
+
+        if description == "Filtros limpiados":
+            QueryHistory.objects.create(
+                description="Filtros limpiados",
+                # No pasamos records_count ni filtros, ya que es una acción de reseteo
+                records_count=0, 
+                filters_applied=None
+            )
+        # En el futuro se pueden añadir más tipos de eventos aquí
+        
+        return JsonResponse({'status': 'ok'})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @require_POST
 def log_clear_filters_event(request):
@@ -97,3 +96,9 @@ def log_clear_filters_event(request):
         return JsonResponse({'status': 'ok'})
     except Exception:
         return JsonResponse({'status': 'error'}, status=400)
+    
+@require_POST
+def clear_history_view(request):
+    QueryHistory.objects.all().delete()
+    messages.success(request, "El historial de consultas ha sido limpiado.")
+    return redirect('history:list')
