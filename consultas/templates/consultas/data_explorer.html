@@ -57,7 +57,6 @@
                         {% endif %}{% endfor %}
                         <div class="col-md-6 filter-section">
                             <h6>{{ form.y.label }}:</h6>
-                            
                             <!-- Renderizamos el campo 'y' directamente y Django creará el <select> -->
                             <!-- Le podemos pasar la clase que queremos al widget desde el archivo de forms -->
                             {{ form.y }}
@@ -195,10 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // LÓGICA PARA LOS INDICADORES DE ORDENAMIENTO
         if (currentFilters.sort_by === key) { // Orden Ascendente
-            sortKey = `-${key}`; // El próximo clic será descendente
+            sortKey = `-${key}`; 
             indicator = ' <i class="fas fa-arrow-up"></i>';
         } else if (currentFilters.sort_by === `-${key}`) { // Orden Descendente
-            sortKey = key; // El próximo clic será ascendente
+            sortKey = key; 
             indicator = ' <i class="fas fa-arrow-down"></i>';
         }
         
@@ -324,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Solo registrar el evento si de verdad había filtros que limpiar
     if (currentQuery && currentQuery.length > 1) {
-        // Llama a nuestra nueva API en segundo plano
+        // Llama a nuestra API en segundo plano
          fetch(`{% url 'history:log_event' %}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

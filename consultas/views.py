@@ -102,7 +102,7 @@ def load_filter_view(request, filter_id):
     )
 
     # Construir la URL de forma manual y correcta usando urlencode
-    # El argumento 'doseq=True' es la clave para manejar listas
+    # El argumento 'doseq=True' es clave para manejar listas
     query_string = urlencode(saved_filter.parameters, doseq=True)
     return redirect(f"/data/?{query_string}")
 

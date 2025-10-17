@@ -4,14 +4,13 @@ from dashboard.models import CampaignRecord
 class FilterManager:
     """
     Clase que encapsula la lógica para aplicar filtros a un QuerySet.
-    Este es nuestro "GestorFiltros".
     """
     @staticmethod
     def apply_filters(queryset, params):
         # Hacemos una copia para no modificar el diccionario original
         filters = params.copy()
 
-        # 1. Filtro de Resultado ('y')
+        # Filtro de Resultado ('y')
         # Buscamos el valor, lo eliminamos del diccionario y lo aplicamos si existe.
         y_value = filters.pop('y', None)
         if y_value:
@@ -20,7 +19,7 @@ class FilterManager:
             bool_value = y_value_str.lower() == 'yes'
             queryset = queryset.filter(y=bool_value)
 
-        # 2. Filtro de Edad (numérico)
+        # Filtro de Edad (numérico)
         age_min = filters.pop('age_min', None)
         if age_min:
              # Similar a 'y', puede venir en una lista
@@ -34,7 +33,7 @@ class FilterManager:
              if str(age_max_val).isdigit():
                  queryset = queryset.filter(age__lte=int(age_max_val))
 
-        # 3. Filtros de Múltiples Valores (Píldoras)
+        # Filtros de Múltiples Valores (Píldoras)
         # Lo que queda en 'filters' ya no contiene 'y', 'age_min', ni 'age_max'
         for field, values in filters.items():
             if values and field != 'sort_by' and field != 'page':
