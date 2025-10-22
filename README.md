@@ -1,4 +1,5 @@
-Guía para configurar el proyecto
+# Guía para configurar el proyecto
+
 ¡Hola! Aquí están los pasos para descargar y ejecutar el proyecto localmente.
 Requisitos Previos:
 Asegurarse de tener instalado:
@@ -9,25 +10,26 @@ Asegurarse de tener instalado:
 Se ejecutan por ahora solo los instaladores de VS Code, Python y Git en este punto. Le dan next a todo y continuan.
 
 
-Guía de Configuración Inicial:
+# Guía de Configuración Inicial:
 Paso 1: Clonar el Repositorio
 Abran una terminal (CMD / Símbolo del sistema preferiblemente) en la carpeta donde van a guardar el proyecto y ejecuten el siguiente comando:
-# git clone https://github.com/pipao1229/proyecto-diseno-software.git
+git clone https://github.com/pipao1229/proyecto-diseno-software.git
+
 Luego, entren en la carpeta que se acaba de crear:
 cd proyecto-diseno-software
 
 
 Paso 2: Configurar el Entorno Virtual
 Cada uno debe tener su propio entorno aislado para las librerías del proyecto. Ejecutar:
-# 1. Crear el entorno virtual python -m venv venv
+1. Crear el entorno virtual python -m venv venv
 
-# 2. Activar el entorno virtual venv\Scripts\activate
+2. Activar el entorno virtual venv\Scripts\activate
 
 IMPORTANTE: Se debe usar esta misma terminal para ejecutar todos los siguientes comandos, ya que usa el entorno virtual configurado
  
 Paso 3: Instalar Dependencias
 Vamos a instalar todas las librerías necesarias que están listadas en el archivo requirements.txt. Ejecutar:
-# pip install -r requirements.txt
+pip install -r requirements.txt
 
 Paso 4: Configurar la Base de Datos Local
 Cada uno necesita su propia base de datos local. El código no se conecta a una base de datos central, sino a una en su propia máquina.
@@ -59,10 +61,10 @@ iv.	Hacen clic en "Save"
 
 Paso 5: Ejecutar las Migraciones
 Este comando creará todas las tablas necesarias en su base de datos local recién configurada.
-# python manage.py migrate
+python manage.py migrate
 Paso C: Iniciar el Servidor
 ¡Ya está todo listo! Pueden iniciar el servidor de desarrollo de Django:
-# python manage.py runserver
+python manage.py runserver
 Visiten http://127.0.0.1:8000/ en su navegador. Deberían ver la página con el dashboard.
 
 De ahora en adelante, pueden usar la terminal directa de VS Code. Presionan sobre "Terminal" -> "Nueva Terminal". Cuando se abra, se va a abrir con powershell, nada más presionan la flecha al lado del botón de “+”, escogen “Command Prompt” y ya se les activa el entorno virtual en esa terminal (aparece como (venv) C:\Users\...)
